@@ -30,12 +30,12 @@ resource "aws_iam_role" "service_role" {
 
 resource "aws_iam_policy_attachment" "enhanced_health" {
   name       = "AWSElasticBeanstalkEnhancedHealth"
-    roles      = [aws_iam_role.service_role.name]
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth",
+  roles      = [aws_iam_role.service_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
 }
 
 resource "aws_iam_policy_attachment" "beanstalk_service" {
   name       = "AWSElasticBeanstalkService"
-  roles = [aws_iam_role.service_role.name]
+  roles      = [aws_iam_role.service_role.name]
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkService"
 }
