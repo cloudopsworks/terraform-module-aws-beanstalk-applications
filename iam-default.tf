@@ -23,6 +23,12 @@ resource "aws_iam_role" "instance_role" {
   tags               = local.all_tags
 }
 
+resource "aws_iam_instance_profile" "instance_role" {
+  name = aws_iam_role.instance_role.name
+  role = aws_iam_role.instance_role.name
+  tags = local.all_tags
+}
+
 resource "aws_iam_policy_attachment" "ec2_ro" {
   name       = "AmazonEC2ReadOnlyAccess"
   roles      = [aws_iam_role.instance_role.name]

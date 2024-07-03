@@ -4,16 +4,28 @@
 #            Distributed Under Apache v2.0 License
 #
 
-output "iam_instance_role_name" {
-  value = aws_iam_role.instance_role.name
+output "iam_instance_role_id" {
+  value = aws_iam_role.instance_role.id
 }
 
 output "iam_instance_role_arn" {
   value = aws_iam_role.instance_role.arn
 }
 
-output "iam_service_role_name" {
-  value = aws_iam_role.service_role.name
+output "iam_instance_profile_arn" {
+  value = aws_iam_instance_profile.instance_role.arn
+}
+
+output "iam_instance_profile_id" {
+  value = aws_iam_instance_profile.instance_role.id
+}
+
+output "iam_instance_profile_unique_id" {
+  value = aws_iam_instance_profile.instance_role.unique_id
+}
+
+output "iam_service_role_id" {
+  value = aws_iam_role.service_role.id
 }
 
 output "iam_service_role_arn" {
