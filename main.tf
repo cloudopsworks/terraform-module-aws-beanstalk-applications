@@ -5,7 +5,7 @@
 #
 
 resource "aws_elastic_beanstalk_application" "this" {
-  for_each    = var.applications
+  for_each    = toset(var.applications)
   name        = each.value
   description = "Elastic Beanstalk Application - ${each.value}"
 
