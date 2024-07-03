@@ -25,48 +25,41 @@ resource "aws_iam_role" "instance_role" {
 
 resource "aws_iam_instance_profile" "instance_role" {
   name = aws_iam_role.instance_role.name
-  role = aws_iam_role.instance_role.name
+  role = aws_iam_role.instance_role.id
   tags = local.all_tags
 }
 
-resource "aws_iam_policy_attachment" "ec2_ro" {
-  name       = "AmazonEC2ReadOnlyAccess"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "ec2_ro" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
 
-resource "aws_iam_policy_attachment" "ec2_for_ssm" {
-  name       = "AmazonSSMManagedInstanceCore"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "ec2_for_ssm" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_policy_attachment" "s3_full_access" {
-  name       = "AmazonS3FullAccess"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "s3_full_access" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
-resource "aws_iam_policy_attachment" "multi_docker" {
-  name       = "AWSElasticBeanstalkMulticontainerDocker"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "multi_docker" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
 }
 
-resource "aws_iam_policy_attachment" "web_tier" {
-  name       = "AWSElasticBeanstalkWebTier"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "web_tier" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
 }
 
-resource "aws_iam_policy_attachment" "worker_tier" {
-  name       = "AWSElasticBeanstalkWorkerTier"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "worker_tier" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
 }
 
-resource "aws_iam_policy_attachment" "cloudwatch_full_access" {
-  name       = "CloudWatchFullAccess"
-  roles      = [aws_iam_role.instance_role.name]
+resource "aws_iam_role_policy_attachment" "cloudwatch_full_access" {
+  role       = aws_iam_role.instance_role.id
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
