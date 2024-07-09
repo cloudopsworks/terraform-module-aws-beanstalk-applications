@@ -29,7 +29,7 @@ resource "aws_iam_role" "instance_role" {
     "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier",
     "arn:aws:iam::aws:policy/CloudWatchFullAccess"
   ]
-  tags               = local.all_tags
+  tags = local.all_tags
 }
 
 resource "aws_iam_instance_profile" "instance_role" {
