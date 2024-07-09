@@ -37,3 +37,27 @@ resource "aws_iam_instance_profile" "instance_role" {
   role = aws_iam_role.instance_role.id
   tags = local.all_tags
 }
+
+
+# Policy for ElasticBeanstalk assume role
+data "aws_iam_policy_document" "service_role" {
+  version = "2012-10-17"
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["elasticbeanstalk.amazonaws.com"]
+    }
+  }
+}
+
+# IAM Role for Elastic Beanstalk Service role
+resource "aws_iam_role" "service_role" {
+  name               = "eb-service-role-${local.system_name}"
+  assume_role_policy = data.aws_iam_policy_document.service_role.json
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth",
+    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService",
+  ]
+  tags = local.all_tags
+}
