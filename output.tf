@@ -40,3 +40,11 @@ output "applications" {
     }
   }
 }
+
+output "logs_bucket_name" {
+  value = module.logs_bucket.s3_bucket_id
+}
+
+output "versions_bucket_name" {
+  value = module.versions_bucket.s3_bucket_id
+}
