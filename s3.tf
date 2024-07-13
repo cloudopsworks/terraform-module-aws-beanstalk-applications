@@ -76,7 +76,7 @@ module "versions_bucket" {
       }
     }
   ]
-  tags = module.tags.locals.common_tags
+  tags = local.all_tags
 }
 
 module "logs_bucket" {
@@ -121,5 +121,5 @@ module "logs_bucket" {
       }
     }
   ]
-  tags = module.tags.locals.common_tags
+  tags = local.all_tags
 }
