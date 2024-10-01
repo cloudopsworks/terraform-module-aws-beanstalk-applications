@@ -36,7 +36,7 @@ output "applications" {
   value = {
     for item in var.applications : item => {
       name = item
-      arn  = aws_elastic_beanstalk_application.this[item].arn
+      arn  = try(aws_elastic_beanstalk_application.this[item].arn, "")
     }
   }
 }
