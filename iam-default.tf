@@ -20,20 +20,46 @@ data "aws_iam_policy_document" "instance_role" {
 resource "aws_iam_role" "instance_role" {
   name               = "eb-ec2-role-${local.system_name}"
   assume_role_policy = data.aws_iam_policy_document.instance_role.json
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess",
-    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-    "arn:aws:iam::aws:policy/AmazonS3FullAccess",
-    "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker",
-    "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier",
-    "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier",
-    "arn:aws:iam::aws:policy/CloudWatchFullAccess"
-  ]
-  tags = local.all_tags
+  tags               = local.all_tags
 }
 
 resource "aws_iam_instance_profile" "instance_role" {
   name = aws_iam_role.instance_role.name
   role = aws_iam_role.instance_role.id
   tags = local.all_tags
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_ro" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_ssm" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_s3full" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_docker" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_web" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_worker" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_cw_full" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
