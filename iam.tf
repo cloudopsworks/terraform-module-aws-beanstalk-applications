@@ -25,9 +25,15 @@ data "aws_iam_policy_document" "service_role" {
 resource "aws_iam_role" "service_role" {
   name               = "eb-service-role-${local.system_name}"
   assume_role_policy = data.aws_iam_policy_document.service_role.json
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth",
-    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService",
-  ]
-  tags = local.all_tags
+  tags               = local.all_tags
+}
+
+resource "aws_iam_role_policy_attachment" "service_role_health" {
+  role       = aws_iam_role.service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+}
+
+resource "aws_iam_role_policy_attachment" "service_role_beanstalk" {
+  role       = aws_iam_role.service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 }
