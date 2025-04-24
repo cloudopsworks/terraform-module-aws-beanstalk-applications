@@ -63,3 +63,9 @@ resource "aws_iam_role_policy_attachment" "instance_role_attach_cw_full" {
   role       = aws_iam_role.instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_as_svc" {
+  for_each   = toset(var.role_policies)
+  role       = aws_iam_role.instance_role.name
+  policy_arn = each.value
+}
