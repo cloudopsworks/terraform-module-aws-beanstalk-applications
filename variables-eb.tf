@@ -22,3 +22,9 @@ variable "app_lifecycle" {
     max_age_retention  = null
   }
 }
+
+variable "role_policies" {
+  description = "List of IAM policies to attach to the service role"
+  type        = list(string)
+  default     = []
+}
