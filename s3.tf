@@ -27,6 +27,8 @@ module "versions_bucket" {
   block_public_policy                   = true
   ignore_public_acls                    = true
   restrict_public_buckets               = true
+  attach_public_policy                  = true
+  attach_require_latest_tls_policy      = true
   attach_deny_insecure_transport_policy = true
   control_object_ownership              = true
   object_ownership                      = "ObjectWriter"
@@ -90,8 +92,10 @@ module "logs_bucket" {
   ignore_public_acls                    = true
   restrict_public_buckets               = true
   force_destroy                         = true
+  attach_public_policy                  = true
   attach_elb_log_delivery_policy        = true # Required for ALB logs
   attach_lb_log_delivery_policy         = true # Required for ALB/NLB logs
+  attach_require_latest_tls_policy      = true
   attach_deny_insecure_transport_policy = true
   control_object_ownership              = true
   object_ownership                      = "ObjectWriter"
