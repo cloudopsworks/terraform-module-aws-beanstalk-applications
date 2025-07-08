@@ -181,7 +181,7 @@ module "beanstalk_bucket" {
   attach_policy                         = true
   policy                                = data.aws_iam_policy_document.beanstalk_bucket.json
   control_object_ownership              = true
-  object_ownership                      = "BucketOwnerEnforced"
+  object_ownership                      = "ObjectWriter"
   versioning = {
     enabled = false
   }
