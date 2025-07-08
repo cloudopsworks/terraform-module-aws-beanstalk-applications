@@ -55,14 +55,14 @@
 | <a name="input_artifact_retention_years"></a> [artifact\_retention\_years](#input\_artifact\_retention\_years) | (required) Versions bucket last artifact available deletion policy | `number` | `3` | no |
 | <a name="input_artifact_transition_days"></a> [artifact\_transition\_days](#input\_artifact\_transition\_days) | (required) Versions bucket transition to different tiers Day 0 -> Standard-IA -> Glacier in days. | `number` | n/a | yes |
 | <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | Default prefix for the bucket name | `string` | n/a | yes |
-| <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | n/a | `map(string)` | `{}` | no |
-| <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Establish this is a HUB or spoke configuration | `bool` | `false` | no |
+| <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
+| <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
 | <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (required) Log bucket file archiving to GLACIER time policy | `number` | n/a | yes |
 | <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (required) Log bucket expiration time policy in years. | `number` | `3` | no |
-| <a name="input_org"></a> [org](#input\_org) | n/a | <pre>object({<br/>    organization_name = string<br/>    organization_unit = string<br/>    environment_type  = string<br/>    environment_name  = string<br/>  })</pre> | n/a | yes |
+| <a name="input_org"></a> [org](#input\_org) | Organization details | <pre>object({<br/>    organization_name = string<br/>    organization_unit = string<br/>    environment_type  = string<br/>    environment_name  = string<br/>  })</pre> | n/a | yes |
 | <a name="input_random_bucket_suffix"></a> [random\_bucket\_suffix](#input\_random\_bucket\_suffix) | Add a random suffix to the bucket name | `bool` | `true` | no |
 | <a name="input_role_policies"></a> [role\_policies](#input\_role\_policies) | List of IAM policies to attach to the service role | `list(string)` | `[]` | no |
-| <a name="input_spoke_def"></a> [spoke\_def](#input\_spoke\_def) | n/a | `string` | `"001"` | no |
+| <a name="input_spoke_def"></a> [spoke\_def](#input\_spoke\_def) | Spoke ID Number, must be a 3 digit number | `string` | `"001"` | no |
 | <a name="input_versions_archive_days"></a> [versions\_archive\_days](#input\_versions\_archive\_days) | (required) Transition to archive storage tier Standard-IA -> Glacier in days. | `number` | `365` | no |
 | <a name="input_versions_retention_years"></a> [versions\_retention\_years](#input\_versions\_retention\_years) | (required) Versions bucket artifact versions deletion policy | `number` | `3` | no |
 
