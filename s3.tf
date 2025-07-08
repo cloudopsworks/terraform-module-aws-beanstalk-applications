@@ -18,9 +18,8 @@ resource "random_string" "random" {
 }
 
 module "versions_bucket" {
-  source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.1"
-
+  source                                = "terraform-aws-modules/s3-bucket/aws"
+  version                               = "~> 4.1"
   bucket                                = local.application_versions_bucket
   acl                                   = "private"
   block_public_acls                     = true
@@ -82,9 +81,8 @@ module "versions_bucket" {
 }
 
 module "logs_bucket" {
-  source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "4.1.2"
-
+  source                                = "terraform-aws-modules/s3-bucket/aws"
+  version                               = "~> 4.1"
   bucket                                = local.load_balancer_log_bucket
   acl                                   = "log-delivery-write"
   block_public_acls                     = true
@@ -125,5 +123,25 @@ module "logs_bucket" {
       }
     }
   ]
+  tags = local.all_tags
+}
+
+module "beanstalk_bucket" {
+  source                                = "terraform-aws-modules/s3-bucket/aws"
+  version                               = "~> 4.1"
+  bucket                                = format("elasticbeanstalk-%s-%s", data.aws_region.current.id, data.aws_caller_identity.current.account_id)
+  acl                                   = "private"
+  block_public_acls                     = true
+  block_public_policy                   = true
+  ignore_public_acls                    = true
+  restrict_public_buckets               = true
+  attach_public_policy                  = true
+  attach_require_latest_tls_policy      = true
+  attach_deny_insecure_transport_policy = true
+  control_object_ownership              = true
+  object_ownership                      = "BucketOwnerEnforced"
+  versioning = {
+    enabled = true
+  }
   tags = local.all_tags
 }
