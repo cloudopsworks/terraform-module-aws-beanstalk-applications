@@ -129,7 +129,7 @@ module "logs_bucket" {
 module "beanstalk_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
   version                               = "~> 4.1"
-  bucket                                = format("elasticbeanstalk-%s-%s", data.aws_region.current.id, data.aws_caller_identity.current.account_id)
+  bucket                                = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.id, "_", "-"), data.aws_caller_identity.current.account_id)
   acl                                   = "private"
   block_public_acls                     = true
   block_public_policy                   = true
