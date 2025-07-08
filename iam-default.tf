@@ -7,6 +7,10 @@
 #     Distributed Under Apache v2.0 License
 #
 
+locals {
+  iam_role_name = format("eb-ec2-role-%s", local.system_name)
+}
+
 # Policy for ElasticBeanstalk assume role
 data "aws_iam_policy_document" "instance_role" {
   version = "2012-10-17"
@@ -21,7 +25,7 @@ data "aws_iam_policy_document" "instance_role" {
 
 # IAM Role for Elastic Beanstalk Instances
 resource "aws_iam_role" "instance_role" {
-  name               = "eb-ec2-role-${local.system_name}"
+  name               = local.iam_role_name
   assume_role_policy = data.aws_iam_policy_document.instance_role.json
   tags               = local.all_tags
 }
