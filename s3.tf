@@ -6,6 +6,7 @@
 locals {
   load_balancer_log_bucket    = var.random_bucket_suffix ? "logs-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "logs-${var.default_bucket_prefix}-${local.system_name_short}"
   application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}"
+  beanstalk_bucket            = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.id, "_", "-"), data.aws_caller_identity.current.account_id)
 }
 
 resource "random_string" "random" {
@@ -126,10 +127,49 @@ module "logs_bucket" {
   tags = local.all_tags
 }
 
+data "aws_iam_policy_document" "beanstalk_bucket" {
+  statement {
+    sid    = "allowBeanstalkAccess"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+    ]
+    resources = [
+      "arn:aws:s3:::${local.beanstalk_bucket}",
+      "arn:aws:s3:::${local.beanstalk_bucket}/resources/environments/*"
+    ]
+    principals {
+      type = "AWS"
+      identifiers = [
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.iam_role_name}"
+      ]
+    }
+  }
+  statement {
+    sid    = "denyDeletion"
+    effect = "Deny"
+    actions = [
+      "s3:DeleteBucket"
+    ]
+    resources = [
+      "arn:aws:s3:::${local.beanstalk_bucket}"
+    ]
+    principals {
+      type = "AWS"
+      identifiers = [
+        "*"
+      ]
+    }
+  }
+}
+
 module "beanstalk_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
   version                               = "~> 4.1"
-  bucket                                = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.id, "_", "-"), data.aws_caller_identity.current.account_id)
+  bucket                                = local.beanstalk_bucket
   acl                                   = "private"
   block_public_acls                     = true
   block_public_policy                   = true
@@ -138,6 +178,8 @@ module "beanstalk_bucket" {
   attach_public_policy                  = true
   attach_require_latest_tls_policy      = true
   attach_deny_insecure_transport_policy = true
+  attach_policy                         = true
+  policy                                = data.aws_iam_policy_document.beanstalk_bucket.json
   control_object_ownership              = true
   object_ownership                      = "BucketOwnerEnforced"
   versioning = {

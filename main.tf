@@ -20,7 +20,5 @@ resource "aws_elastic_beanstalk_application" "this" {
     delete_source_from_s3 = var.app_lifecycle.delete_from_s3
   }
 
-  tags = merge({
-    Name = each.value
-  }, local.all_tags)
+  tags = local.all_tags
 }
