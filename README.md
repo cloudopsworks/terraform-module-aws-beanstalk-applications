@@ -10,10 +10,13 @@
 
 [![cloudopsworks][logo]](https://cloudops.works/)
 
-# Terraform Transit Gateway Module
+# Terraform Beanstalk Applications Setup Module
 
 
-VPC Module for setting up transit gateway with ResourceAccessMananger support.
+
+
+AWS Elastic Beanstalk Applications setup module that manages application buckets, logging, and versioning configurations. 
+Provides automated setup for application version storage, logging buckets, and Elastic Beanstalk required resources.
 
 
 ---
@@ -46,10 +49,66 @@ We have [*lots of terraform modules*][terraform_modules] that are Open Source an
 
 
 
+## Introduction
+
+This module creates and manages AWS Elastic Beanstalk application infrastructure including:
+- Application versions S3 bucket with lifecycle policies
+- Load balancer logging S3 bucket with retention policies
+- Region-specific Elastic Beanstalk bucket
+All buckets are configured with proper security settings and encryption.
+
+## Usage
 
 
+**IMPORTANT:** The `master` branch is used in `source` just as an example. In your code, do not pin to `master` because there may be breaking changes between releases.
+Instead pin to the release tag (e.g. `?ref=vX.Y.Z`) of one of our [latest releases](https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications/releases).
 
 
+Module supports the following configurations through variables:
+
+bucket_configuration:
+  random_bucket_suffix: Boolean to append random string to bucket names
+  default_bucket_prefix: Prefix for bucket names
+
+retention_policies:
+  artifact_transition_days: Days before moving to STANDARD_IA
+  artifact_archive_days: Days before moving to GLACIER
+  versions_archive_days: Days before archiving old versions
+  versions_retention_years: Years to retain versions
+  artifact_retention_years: Years to retain artifacts
+  logs_archive_days: Days before archiving logs
+  logs_retention_years: Years to retain logs
+
+## Quick Start
+
+1. Create a new Terragrunt configuration file
+2. Set the module source to this repository
+3. Configure required variables:
+   - default_bucket_prefix
+   - retention policies as needed
+4. Run terragrunt init && terragrunt apply
+
+
+## Examples
+
+Terragrunt configuration example:
+```hcl
+include {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git?ref=v1.0.0"
+}
+
+inputs = {
+  random_bucket_suffix = true
+  default_bucket_prefix = "myapp"
+  artifact_retention_years = 2
+  logs_retention_years = 1
+  versions_retention_years = 2
+}
+```
 
 
 
@@ -82,7 +141,8 @@ Available targets:
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_logs_bucket"></a> [logs\_bucket](#module\_logs\_bucket) | terraform-aws-modules/s3-bucket/aws | 4.1.2 |
+| <a name="module_beanstalk_bucket"></a> [beanstalk\_bucket](#module\_beanstalk\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
+| <a name="module_logs_bucket"></a> [logs\_bucket](#module\_logs\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
 | <a name="module_tags"></a> [tags](#module\_tags) | cloudopsworks/tags/local | 1.0.9 |
 | <a name="module_versions_bucket"></a> [versions\_bucket](#module\_versions\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
 
@@ -120,14 +180,14 @@ Available targets:
 | <a name="input_artifact_retention_years"></a> [artifact\_retention\_years](#input\_artifact\_retention\_years) | (required) Versions bucket last artifact available deletion policy | `number` | `3` | no |
 | <a name="input_artifact_transition_days"></a> [artifact\_transition\_days](#input\_artifact\_transition\_days) | (required) Versions bucket transition to different tiers Day 0 -> Standard-IA -> Glacier in days. | `number` | n/a | yes |
 | <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | Default prefix for the bucket name | `string` | n/a | yes |
-| <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | n/a | `map(string)` | `{}` | no |
-| <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Establish this is a HUB or spoke configuration | `bool` | `false` | no |
+| <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
+| <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
 | <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (required) Log bucket file archiving to GLACIER time policy | `number` | n/a | yes |
 | <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (required) Log bucket expiration time policy in years. | `number` | `3` | no |
-| <a name="input_org"></a> [org](#input\_org) | n/a | <pre>object({<br/>    organization_name = string<br/>    organization_unit = string<br/>    environment_type  = string<br/>    environment_name  = string<br/>  })</pre> | n/a | yes |
+| <a name="input_org"></a> [org](#input\_org) | Organization details | <pre>object({<br/>    organization_name = string<br/>    organization_unit = string<br/>    environment_type  = string<br/>    environment_name  = string<br/>  })</pre> | n/a | yes |
 | <a name="input_random_bucket_suffix"></a> [random\_bucket\_suffix](#input\_random\_bucket\_suffix) | Add a random suffix to the bucket name | `bool` | `true` | no |
 | <a name="input_role_policies"></a> [role\_policies](#input\_role\_policies) | List of IAM policies to attach to the service role | `list(string)` | `[]` | no |
-| <a name="input_spoke_def"></a> [spoke\_def](#input\_spoke\_def) | n/a | `string` | `"001"` | no |
+| <a name="input_spoke_def"></a> [spoke\_def](#input\_spoke\_def) | Spoke ID Number, must be a 3 digit number | `string` | `"001"` | no |
 | <a name="input_versions_archive_days"></a> [versions\_archive\_days](#input\_versions\_archive\_days) | (required) Transition to archive storage tier Standard-IA -> Glacier in days. | `number` | `365` | no |
 | <a name="input_versions_retention_years"></a> [versions\_retention\_years](#input\_versions\_retention\_years) | (required) Versions bucket artifact versions deletion policy | `number` | `3` | no |
 
@@ -152,7 +212,7 @@ Available targets:
 
 **Got a question?** We got answers. 
 
-File a GitHub [issue](https://github.com/cloudopsworks/terraform-module-aws-vpc-setup/issues), send us an [email][email] or join our [Slack Community][slack].
+File a GitHub [issue](https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications/issues), send us an [email][email] or join our [Slack Community][slack].
 
 [![README Commercial Support][readme_commercial_support_img]][readme_commercial_support_link]
 
@@ -169,7 +229,7 @@ File a GitHub [issue](https://github.com/cloudopsworks/terraform-module-aws-vpc-
 
 ### Bug Reports & Feature Requests
 
-Please use the [issue tracker](https://github.com/cloudopsworks/terraform-module-aws-vpc-setup/issues) to report any bugs or file feature requests.
+Please use the [issue tracker](https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications/issues) to report any bugs or file feature requests.
 
 ### Developing
 
@@ -236,31 +296,31 @@ This project is maintained by [Cloud Ops Works LLC][website].
 [![Beacon][beacon]][website]
 
   [logo]: https://cloudops.works/logo-300x69.svg
-  [docs]: https://cowk.io/docs?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=docs
-  [website]: https://cowk.io/homepage?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=website
-  [github]: https://cowk.io/github?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=github
-  [jobs]: https://cowk.io/jobs?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=jobs
-  [hire]: https://cowk.io/hire?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=hire
-  [slack]: https://cowk.io/slack?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=slack
-  [linkedin]: https://cowk.io/linkedin?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=linkedin
-  [twitter]: https://cowk.io/twitter?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=twitter
-  [testimonial]: https://cowk.io/leave-testimonial?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=testimonial
-  [office_hours]: https://cloudops.works/office-hours?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=office_hours
-  [newsletter]: https://cowk.io/newsletter?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=newsletter
-  [email]: https://cowk.io/email?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=email
-  [commercial_support]: https://cowk.io/commercial-support?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=commercial_support
-  [we_love_open_source]: https://cowk.io/we-love-open-source?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=we_love_open_source
-  [terraform_modules]: https://cowk.io/terraform-modules?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=terraform_modules
+  [docs]: https://cowk.io/docs?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=docs
+  [website]: https://cowk.io/homepage?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=website
+  [github]: https://cowk.io/github?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=github
+  [jobs]: https://cowk.io/jobs?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=jobs
+  [hire]: https://cowk.io/hire?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=hire
+  [slack]: https://cowk.io/slack?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=slack
+  [linkedin]: https://cowk.io/linkedin?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=linkedin
+  [twitter]: https://cowk.io/twitter?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=twitter
+  [testimonial]: https://cowk.io/leave-testimonial?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=testimonial
+  [office_hours]: https://cloudops.works/office-hours?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=office_hours
+  [newsletter]: https://cowk.io/newsletter?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=newsletter
+  [email]: https://cowk.io/email?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=email
+  [commercial_support]: https://cowk.io/commercial-support?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=commercial_support
+  [we_love_open_source]: https://cowk.io/we-love-open-source?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=we_love_open_source
+  [terraform_modules]: https://cowk.io/terraform-modules?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=terraform_modules
   [readme_header_img]: https://cloudops.works/readme/header/img
-  [readme_header_link]: https://cloudops.works/readme/header/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=readme_header_link
+  [readme_header_link]: https://cloudops.works/readme/header/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=readme_header_link
   [readme_footer_img]: https://cloudops.works/readme/footer/img
-  [readme_footer_link]: https://cloudops.works/readme/footer/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=readme_footer_link
+  [readme_footer_link]: https://cloudops.works/readme/footer/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=readme_footer_link
   [readme_commercial_support_img]: https://cloudops.works/readme/commercial-support/img
-  [readme_commercial_support_link]: https://cloudops.works/readme/commercial-support/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-vpc-setup&utm_content=readme_commercial_support_link
-  [share_twitter]: https://twitter.com/intent/tweet/?text=Terraform+Transit+Gateway+Module&url=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [share_linkedin]: https://www.linkedin.com/shareArticle?mini=true&title=Terraform+Transit+Gateway+Module&url=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [share_reddit]: https://reddit.com/submit/?url=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [share_facebook]: https://facebook.com/sharer/sharer.php?u=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [share_googleplus]: https://plus.google.com/share?url=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [share_email]: mailto:?subject=Terraform+Transit+Gateway+Module&body=https://github.com/cloudopsworks/terraform-module-aws-vpc-setup
-  [beacon]: https://ga-beacon.cloudops.works/G-7XWMFVFXZT/cloudopsworks/terraform-module-aws-vpc-setup?pixel&cs=github&cm=readme&an=terraform-module-aws-vpc-setup
+  [readme_commercial_support_link]: https://cloudops.works/readme/commercial-support/link?utm_source=github&utm_medium=readme&utm_campaign=cloudopsworks/terraform-module-aws-beanstalk-applications&utm_content=readme_commercial_support_link
+  [share_twitter]: https://twitter.com/intent/tweet/?text=Terraform+Beanstalk+Applications+Setup+Module&url=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [share_linkedin]: https://www.linkedin.com/shareArticle?mini=true&title=Terraform+Beanstalk+Applications+Setup+Module&url=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [share_reddit]: https://reddit.com/submit/?url=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [share_facebook]: https://facebook.com/sharer/sharer.php?u=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [share_googleplus]: https://plus.google.com/share?url=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [share_email]: mailto:?subject=Terraform+Beanstalk+Applications+Setup+Module&body=https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+  [beacon]: https://ga-beacon.cloudops.works/G-7XWMFVFXZT/cloudopsworks/terraform-module-aws-beanstalk-applications?pixel&cs=github&cm=readme&an=terraform-module-aws-beanstalk-applications

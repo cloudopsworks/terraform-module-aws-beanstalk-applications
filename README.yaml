@@ -1,4 +1,4 @@
-name: Terraform Transit Gateway Module
+name: Terraform Beanstalk Applications Setup Module
 #logo: logo/logo.jpg
 
 license: "APACHE2"
@@ -8,23 +8,66 @@ copyrights:
     url: "https://cloudops.works"
     year: "2024"
 
-github_repo: cloudopsworks/terraform-module-aws-vpc-setup
+github_repo: cloudopsworks/terraform-module-aws-beanstalk-applications
 
 description: |-
-  VPC Module for setting up transit gateway with ResourceAccessMananger support.
+  AWS Elastic Beanstalk Applications setup module that manages application buckets, logging, and versioning configurations. 
+  Provides automated setup for application version storage, logging buckets, and Elastic Beanstalk required resources.
 
 # Introduction to the project
-#introduction: |-
-#  This is an introduction.
+introduction: |-
+  This module creates and manages AWS Elastic Beanstalk application infrastructure including:
+  - Application versions S3 bucket with lifecycle policies
+  - Load balancer logging S3 bucket with retention policies
+  - Region-specific Elastic Beanstalk bucket
+  All buckets are configured with proper security settings and encryption.
 
 # How to use this project
-#usage: |-
+usage: |-
+  Module supports the following configurations through variables:
+
+  bucket_configuration:
+    random_bucket_suffix: Boolean to append random string to bucket names
+    default_bucket_prefix: Prefix for bucket names
+
+  retention_policies:
+    artifact_transition_days: Days before moving to STANDARD_IA
+    artifact_archive_days: Days before moving to GLACIER
+    versions_archive_days: Days before archiving old versions
+    versions_retention_years: Years to retain versions
+    artifact_retention_years: Years to retain artifacts
+    logs_archive_days: Days before archiving logs
+    logs_retention_years: Years to retain logs
 
 # Example usage
-#examples: |-
+examples: |-
+  Terragrunt configuration example:
+  ```hcl
+  include {
+    path = find_in_parent_folders()
+  }
+
+  terraform {
+    source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git?ref=v1.0.0"
+  }
+
+  inputs = {
+    random_bucket_suffix = true
+    default_bucket_prefix = "myapp"
+    artifact_retention_years = 2
+    logs_retention_years = 1
+    versions_retention_years = 2
+  }
+  ```
 
 # How to get started quickly
-#quickstart: |-
+quickstart: |-
+  1. Create a new Terragrunt configuration file
+  2. Set the module source to this repository
+  3. Configure required variables:
+     - default_bucket_prefix
+     - retention policies as needed
+  4. Run terragrunt init && terragrunt apply
 
 include:
   - "docs/targets.md"
