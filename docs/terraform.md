@@ -16,7 +16,8 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_logs_bucket"></a> [logs\_bucket](#module\_logs\_bucket) | terraform-aws-modules/s3-bucket/aws | 4.1.2 |
+| <a name="module_beanstalk_bucket"></a> [beanstalk\_bucket](#module\_beanstalk\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
+| <a name="module_logs_bucket"></a> [logs\_bucket](#module\_logs\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
 | <a name="module_tags"></a> [tags](#module\_tags) | cloudopsworks/tags/local | 1.0.9 |
 | <a name="module_versions_bucket"></a> [versions\_bucket](#module\_versions\_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 4.1 |
 
