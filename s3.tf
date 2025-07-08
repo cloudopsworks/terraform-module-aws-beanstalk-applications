@@ -141,7 +141,7 @@ module "beanstalk_bucket" {
   control_object_ownership              = true
   object_ownership                      = "BucketOwnerEnforced"
   versioning = {
-    enabled = true
+    enabled = false
   }
   tags = local.all_tags
 }
