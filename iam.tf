@@ -7,6 +7,8 @@
 #     Distributed Under Apache v2.0 License
 #
 
+data "aws_caller_identity" "current" {}
+
 # Policy for ElasticBeanstalk assume role
 data "aws_iam_policy_document" "service_role" {
   version = "2012-10-17"
