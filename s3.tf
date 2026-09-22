@@ -6,7 +6,7 @@
 locals {
   load_balancer_log_bucket    = var.random_bucket_suffix ? "logs-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "logs-${var.default_bucket_prefix}-${local.system_name_short}"
   application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}"
-  beanstalk_bucket            = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.id, "_", "-"), data.aws_caller_identity.current.account_id)
+  beanstalk_bucket            = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.region, "_", "-"), data.aws_caller_identity.current.account_id)
 }
 
 resource "random_string" "random" {
@@ -20,9 +20,9 @@ resource "random_string" "random" {
 
 module "versions_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
-  version                               = "~> 4.1"
+  version                               = "~> 5.0"
   bucket                                = local.application_versions_bucket
-  acl                                   = "private"
+  object_ownership                      = "BucketOwnerEnforced"
   block_public_acls                     = true
   block_public_policy                   = true
   ignore_public_acls                    = true
@@ -31,7 +31,6 @@ module "versions_bucket" {
   attach_require_latest_tls_policy      = true
   attach_deny_insecure_transport_policy = true
   control_object_ownership              = true
-  object_ownership                      = "ObjectWriter"
 
   versioning = {
     enabled = true
@@ -40,7 +39,7 @@ module "versions_bucket" {
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        kms_master_key_id = "arn:aws:kms:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:alias/aws/s3"
+        kms_master_key_id = "arn:aws:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:alias/aws/s3"
         sse_algorithm     = "aws:kms"
       }
     }
@@ -62,7 +61,7 @@ module "versions_bucket" {
         }
       ]
 
-      noncurrent_transition = [
+      noncurrent_version_transition = [
         {
           days          = var.versions_archive_days
           storage_class = "GLACIER"
@@ -83,8 +82,9 @@ module "versions_bucket" {
 
 module "logs_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
-  version                               = "~> 4.1"
+  version                               = "~> 5.1"
   bucket                                = local.load_balancer_log_bucket
+  object_ownership                      = "BucketOwnerEnforced"
   acl                                   = "log-delivery-write"
   block_public_acls                     = true
   block_public_policy                   = true
@@ -97,7 +97,6 @@ module "logs_bucket" {
   attach_require_latest_tls_policy      = true
   attach_deny_insecure_transport_policy = true
   control_object_ownership              = true
-  object_ownership                      = "ObjectWriter"
 
   server_side_encryption_configuration = {
     rule = {
@@ -168,9 +167,9 @@ data "aws_iam_policy_document" "beanstalk_bucket" {
 
 module "beanstalk_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
-  version                               = "~> 4.1"
+  version                               = "~> 5.0"
   bucket                                = local.beanstalk_bucket
-  acl                                   = "private"
+  object_ownership                      = "BucketOwnerEnforced"
   block_public_acls                     = true
   block_public_policy                   = true
   ignore_public_acls                    = true
@@ -181,7 +180,6 @@ module "beanstalk_bucket" {
   attach_policy                         = true
   policy                                = data.aws_iam_policy_document.beanstalk_bucket.json
   control_object_ownership              = true
-  object_ownership                      = "ObjectWriter"
   versioning = {
     enabled = false
   }
