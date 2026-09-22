@@ -84,7 +84,7 @@ module "logs_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
   version                               = "~> 5.1"
   bucket                                = local.load_balancer_log_bucket
-  object_ownership                      = "BucketOwnerEnforced"
+  object_ownership                      = "BucketOwnerPreferred"
   acl                                   = "log-delivery-write"
   block_public_acls                     = true
   block_public_policy                   = true
