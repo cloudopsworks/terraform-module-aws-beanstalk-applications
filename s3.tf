@@ -5,7 +5,7 @@
 #
 locals {
   load_balancer_log_bucket    = var.random_bucket_suffix ? "logs-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "logs-${var.default_bucket_prefix}-${local.system_name_short}"
-  application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}"
+  application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}"
   beanstalk_bucket            = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.region, "_", "-"), data.aws_caller_identity.current.account_id)
 }
 
