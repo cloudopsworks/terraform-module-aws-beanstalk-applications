@@ -29,6 +29,7 @@
 | [aws_iam_instance_profile.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
 | [aws_iam_role.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.service_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.instance_role_scoped](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_as_svc](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_cw_full](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_docker](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
@@ -43,6 +44,7 @@
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.beanstalk_bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.instance_role_scoped](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.service_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
@@ -58,6 +60,7 @@
 | <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | (Required) Prefix used in the logs and application versions bucket names. Must be 1-9 characters. | `string` | n/a | yes |
 | <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
 | <a name="input_import_default_bucket"></a> [import\_default\_bucket](#input\_import\_default\_bucket) | (Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account\_id>) into state instead of creating it. Set to true when Elastic Beanstalk or a previous deployment already created the bucket. Default: false. | `bool` | `false` | no |
+| <a name="input_instance_role"></a> [instance\_role](#input\_instance\_role) | (Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Default: legacy\_full\_access = true, ecs\_platform = true, no extra buckets, log\_group\_prefixes = ["/aws/elasticbeanstalk/"]. | <pre>object({<br/>    legacy_full_access = optional(bool, true)<br/>    ecs_platform       = optional(bool, true)<br/>    s3_read_buckets    = optional(list(string), [])<br/>    s3_write_buckets   = optional(list(string), [])<br/>    log_group_prefixes = optional(list(string), ["/aws/elasticbeanstalk/"])<br/>  })</pre> | `{}` | no |
 | <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
 | <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (Required) Days before load balancer log objects transition to the GLACIER storage class. | `number` | n/a | yes |
 | <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (Optional) Years before load balancer log objects expire (converted to days as years * 365). Default: 3. | `number` | `3` | no |

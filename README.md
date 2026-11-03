@@ -53,12 +53,29 @@ This module lays the shared groundwork that Elastic Beanstalk environments in an
 |-----------|----------|-------|
 | Applications | `aws_elastic_beanstalk_application` | One per entry in `applications`, with a shared version lifecycle (`app_lifecycle`). |
 | Service role | `eb-service-role-<system_name>` | Trusted by `elasticbeanstalk.amazonaws.com`; Enhanced Health and Managed Updates policies attached. |
-| Instance role & profile | `eb-ec2-role-<system_name>` | EC2 read-only, SSM core, S3, CloudWatch, and Beanstalk web/worker/multicontainer policies, plus `role_policies`. |
+| Instance role & profile | `eb-ec2-role-<system_name>` | SSM core and Beanstalk web/worker tier policies, a scoped inline policy (`eb-instance-scoped`), optional ECS and legacy broad policies (`instance_role`), plus `role_policies`. |
 | Application versions bucket | `appver-<prefix>-<system_name_short>-<suffix>` | KMS (`aws/s3`) encryption, versioning, STANDARD_IA → GLACIER → expiration lifecycle. |
 | Load balancer logs bucket | `logs-<prefix>-<system_name_short>[-<suffix>]` | ACL `log-delivery-write`, ELB/ALB/NLB delivery policies, GLACIER archive and expiration. |
 | Default Beanstalk bucket | `elasticbeanstalk-<region>-<account_id>` | Bucket policy for the Beanstalk service; can be imported when it already exists. |
 
 Every bucket blocks public access, enforces TLS, and denies insecure transport.
+
+### EC2 instance role permissions
+
+| Policy | Attached | Grants |
+|--------|----------|--------|
+| `AWSElasticBeanstalkWebTier` / `WorkerTier` | always | Beanstalk's own needs: `elasticbeanstalk-*` buckets, log streaming to `/aws/elasticbeanstalk*`, X-Ray, `cloudwatch:PutMetricData`, worker SQS/DynamoDB, health reporting |
+| `AmazonSSMManagedInstanceCore` | always | Session Manager and SSM agent |
+| `eb-instance-scoped` (inline) | always | Read on the application versions bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `instance_role.log_group_prefixes` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
+| `AWSElasticBeanstalkMulticontainerDocker` | `instance_role.ecs_platform` (default `true`) | ECS access, needed only on ECS-based Docker platform branches |
+| `AmazonS3FullAccess`, `CloudWatchFullAccess`, `AmazonEC2ReadOnlyAccess` | `instance_role.legacy_full_access` (default `true`) | Account-wide S3 read/write/delete, full CloudWatch/Logs/alarm/dashboard control, and EC2/ELB/ASG inventory. **Not needed by Beanstalk.** |
+
+The legacy broad policies stay attached by default for backwards compatibility. To move to least privilege:
+
+1. List every bucket your application code uses under `instance_role.s3_read_buckets` or `s3_write_buckets`.
+   If it calls other AWS APIs (for example CloudWatch `GetMetricData` or SNS), attach a customer-managed policy through `role_policies`.
+2. Apply with `legacy_full_access: true` still set. The scoped grants are added alongside the existing ones.
+3. Set `legacy_full_access: false` (and `ecs_platform: false` unless you run an ECS-based Docker platform), apply, then check application logs for `AccessDenied`.
 
 ### Adopting an existing default Elastic Beanstalk bucket
 
@@ -116,6 +133,17 @@ applications:                  # (Required) Elastic Beanstalk application names 
 #  max_count_versions: 200     # (Optional) Keep at most this many versions. Default: null (no count limit).
 #  max_age_retention: 180      # (Optional) Delete versions older than this many days. Default: null (no age limit).
 #                              # Set only one of max_count_versions / max_age_retention.
+#instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
+#                              # app versions bucket, CloudWatch agent logs on log_group_prefixes, ec2:DescribeTags/Volumes.
+#  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
+#                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
+#  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.
+#  s3_read_buckets: []         # (Optional) Extra bucket names the application may read. Default: [].
+#    - "my-app-assets"
+#  s3_write_buckets: []        # (Optional) Extra bucket names the application may read, write and delete objects in. Default: [].
+#    - "my-app-uploads"
+#  log_group_prefixes:         # (Optional) Log group prefixes the CloudWatch agent may create/write. Must start with "/".
+#    - "/aws/elasticbeanstalk/" #   Default: ["/aws/elasticbeanstalk/"].
 #role_policies: []             # (Optional) Extra IAM policy ARNs attached to the EC2 instance role. Default: [].
 #  - "arn:aws:iam::123456789012:policy/my-app-policy"
 
@@ -174,7 +202,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git//?ref=v1.3.1"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git//?ref=v1.4.0"
 }
 
 inputs = {
@@ -189,6 +217,7 @@ inputs = {
   artifact_archive_days    = try(local.local_vars.artifact_archive_days, 365)
   artifact_retention_years = try(local.local_vars.artifact_retention_years, 3)
   import_default_bucket    = try(local.local_vars.import_default_bucket, false)
+  instance_role            = try(local.local_vars.instance_role, {})
   logs_retention_years     = try(local.local_vars.logs_retention_years, 3)
   random_bucket_suffix     = try(local.local_vars.random_bucket_suffix, true)
   role_policies            = try(local.local_vars.role_policies, [])
@@ -204,7 +233,8 @@ inputs = {
 2. Scaffold: `terragrunt scaffold github.com/cloudopsworks/terraform-module-aws-beanstalk-applications`
 3. In `inputs.yaml`, set the required keys: `applications`, `default_bucket_prefix`, `logs_archive_days`, `artifact_transition_days`.
 4. If `elasticbeanstalk-<region>-<account_id>` already exists in the account, set `import_default_bucket: true`.
-5. Run `terragrunt plan` and then `terragrunt apply`.
+5. For least privilege, list your application's buckets under `instance_role` and set `instance_role.legacy_full_access: false`.
+6. Run `terragrunt plan` and then `terragrunt apply`.
 
 
 ## Examples
@@ -246,6 +276,26 @@ import_default_bucket: true
 ```
 
 On the first `terragrunt plan`, look for `module.beanstalk_bucket.aws_s3_bucket.this[0] will be imported`.
+
+### Least-privilege instance role
+
+Turns off the account-wide S3, CloudWatch and EC2 policies. Only the buckets listed here are accessible to the application.
+
+```yaml
+# inputs.yaml
+applications:
+  - "orders-api"
+default_bucket_prefix: "shop"
+logs_archive_days: 90
+artifact_transition_days: 30
+instance_role:
+  legacy_full_access: false
+  ecs_platform: false
+  s3_read_buckets:
+    - "shop-static-assets"
+  s3_write_buckets:
+    - "shop-order-exports"
+```
 
 
 
@@ -292,6 +342,7 @@ Available targets:
 | [aws_iam_instance_profile.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
 | [aws_iam_role.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.service_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.instance_role_scoped](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_as_svc](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_cw_full](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.instance_role_attach_docker](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
@@ -306,6 +357,7 @@ Available targets:
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.beanstalk_bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.instance_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.instance_role_scoped](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.service_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
@@ -321,6 +373,7 @@ Available targets:
 | <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | (Required) Prefix used in the logs and application versions bucket names. Must be 1-9 characters. | `string` | n/a | yes |
 | <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
 | <a name="input_import_default_bucket"></a> [import\_default\_bucket](#input\_import\_default\_bucket) | (Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account\_id>) into state instead of creating it. Set to true when Elastic Beanstalk or a previous deployment already created the bucket. Default: false. | `bool` | `false` | no |
+| <a name="input_instance_role"></a> [instance\_role](#input\_instance\_role) | (Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Default: legacy\_full\_access = true, ecs\_platform = true, no extra buckets, log\_group\_prefixes = ["/aws/elasticbeanstalk/"]. | <pre>object({<br/>    legacy_full_access = optional(bool, true)<br/>    ecs_platform       = optional(bool, true)<br/>    s3_read_buckets    = optional(list(string), [])<br/>    s3_write_buckets   = optional(list(string), [])<br/>    log_group_prefixes = optional(list(string), ["/aws/elasticbeanstalk/"])<br/>  })</pre> | `{}` | no |
 | <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
 | <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (Required) Days before load balancer log objects transition to the GLACIER storage class. | `number` | n/a | yes |
 | <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (Optional) Years before load balancer log objects expire (converted to days as years * 365). Default: 3. | `number` | `3` | no |
