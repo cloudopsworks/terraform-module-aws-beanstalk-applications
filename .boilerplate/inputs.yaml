@@ -13,8 +13,8 @@ applications:                  # (Required) Elastic Beanstalk application names 
 #instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
 #                              # module's versions, logs and default Beanstalk buckets, PutObject on the default Beanstalk
 #                              # bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
-#  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
-#                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
+#  legacy_full_access: false   # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
+#                              #   (account-wide; not needed by Beanstalk). Set true to keep the pre-1.4.0 behaviour. Default: false.
 #  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.
 #  s3_read_buckets: []         # (Optional) Extra bucket names the application may read. Default: [].
 #    - "my-app-assets"

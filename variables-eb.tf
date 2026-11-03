@@ -34,8 +34,9 @@ variable "app_lifecycle" {
 }
 
 # instance_role:
-#   legacy_full_access: false          # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess and AmazonEC2ReadOnlyAccess
-#                                     #   (account-wide access, not needed by the Beanstalk platform). Set false for least privilege. Default: false.
+#   legacy_full_access: false         # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess and AmazonEC2ReadOnlyAccess
+#                                     #   (account-wide access, not needed by the Beanstalk platform). Set true to keep the
+#                                     #   pre-1.4.0 behaviour while migrating. Default: false.
 #   ecs_platform: true                # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker; needed only on ECS-based Docker platform branches. Default: true.
 #   s3_read_buckets: []               # (Optional) Extra bucket names the application may read (Get/List). Default: [].
 #     - "my-app-assets"

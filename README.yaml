@@ -47,14 +47,17 @@ introduction: |-
   | `AmazonSSMManagedInstanceCore` | always | Session Manager and SSM agent |
   | `eb-instance-scoped` (inline) | always | Read on all three module buckets (application versions, load balancer logs, default Beanstalk bucket); `s3:PutObject` on the default Beanstalk bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `/aws/elasticbeanstalk/*` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
   | `AWSElasticBeanstalkMulticontainerDocker` | `instance_role.ecs_platform` (default `true`) | ECS access, needed only on ECS-based Docker platform branches |
-  | `AmazonS3FullAccess`, `CloudWatchFullAccess`, `AmazonEC2ReadOnlyAccess` | `instance_role.legacy_full_access` (default `true`) | Account-wide S3 read/write/delete, full CloudWatch/Logs/alarm/dashboard control, and EC2/ELB/ASG inventory. **Not needed by Beanstalk.** |
+  | `AmazonS3FullAccess`, `CloudWatchFullAccess`, `AmazonEC2ReadOnlyAccess` | `instance_role.legacy_full_access` (default `false`) | Account-wide S3 read/write/delete, full CloudWatch/Logs/alarm/dashboard control, and EC2/ELB/ASG inventory. **Not needed by Beanstalk.** |
 
-  The legacy broad policies stay attached by default for backwards compatibility. To move to least privilege:
+  > **Upgrading from 1.3.x or earlier:** the legacy broad policies are no longer attached by default.
+  > On the first apply after the upgrade, `AmazonS3FullAccess`, `CloudWatchFullAccess` and `AmazonEC2ReadOnlyAccess`
+  > are detached from the instance role. If your application relies on them, set
+  > `instance_role.legacy_full_access: true` before upgrading, then migrate:
 
   1. List every bucket your application code uses under `instance_role.s3_read_buckets` or `s3_write_buckets`.
      Any other access (other AWS APIs, extra log groups, KMS keys, ...) must be granted with a customer-managed policy through `role_policies`.
   2. Apply with `legacy_full_access: true` still set. The scoped grants are added alongside the existing ones.
-  3. Set `legacy_full_access: false` (and `ecs_platform: false` unless you run an ECS-based Docker platform), apply, then check application logs for `AccessDenied`.
+  3. Remove `legacy_full_access` (or set it to `false`), and set `ecs_platform: false` unless you run an ECS-based Docker platform. Apply, then check application logs for `AccessDenied`.
 
   ### Adopting an existing default Elastic Beanstalk bucket
 
@@ -110,8 +113,8 @@ usage: |-
   #instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
   #                              # module's versions, logs and default Beanstalk buckets, PutObject on the default Beanstalk
   #                              # bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
-  #  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
-  #                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
+  #  legacy_full_access: false   # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
+  #                              #   (account-wide; not needed by Beanstalk). Set true to keep the pre-1.4.0 behaviour. Default: false.
   #  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.
   #  s3_read_buckets: []         # (Optional) Extra bucket names the application may read. Default: [].
   #    - "my-app-assets"
@@ -243,7 +246,8 @@ examples: |-
 
   ### Least-privilege instance role
 
-  Turns off the account-wide S3, CloudWatch and EC2 policies. Only the buckets listed here are accessible to the application.
+  The account-wide S3, CloudWatch and EC2 policies are off by default; `legacy_full_access: false` is shown for clarity.
+  Besides the module's own buckets, only the buckets listed here are accessible to the application.
 
   ```yaml
   # inputs.yaml
@@ -267,7 +271,7 @@ quickstart: |-
   2. Scaffold: `terragrunt scaffold github.com/cloudopsworks/terraform-module-aws-beanstalk-applications`
   3. In `inputs.yaml`, set the required keys: `applications`, `default_bucket_prefix`, `logs_archive_days`, `artifact_transition_days`.
   4. If `elasticbeanstalk-<region>-<account_id>` already exists in the account, set `import_default_bucket: true`.
-  5. For least privilege, list your application's buckets under `instance_role` and set `instance_role.legacy_full_access: false`.
+  5. List the buckets your application uses under `instance_role.s3_read_buckets` / `s3_write_buckets`. Upgrading from 1.3.x and still relying on the broad S3/CloudWatch/EC2 policies? Set `instance_role.legacy_full_access: true`.
   6. Run `terragrunt plan` and then `terragrunt apply`.
 
 include:
