@@ -10,10 +10,7 @@
 locals {
   iam_role_name = format("eb-ec2-role-%s", local.system_name)
 
-  instance_role_log_group_arns = [
-    for prefix in var.instance_role.log_group_prefixes :
-    format("arn:aws:logs:%s:%s:log-group:%s*", data.aws_region.current.region, data.aws_caller_identity.current.account_id, prefix)
-  ]
+  instance_role_log_group_arn = format("arn:aws:logs:%s:%s:log-group:/aws/elasticbeanstalk/*", data.aws_region.current.region, data.aws_caller_identity.current.account_id)
 }
 
 data "aws_iam_policy_document" "instance_role" {
@@ -104,6 +101,7 @@ moved {
 }
 
 ## Scoped least-privilege permissions
+# Only extra S3 buckets are configurable here; any other access must be granted through role_policies.
 data "aws_iam_policy_document" "instance_role_scoped" {
   statement {
     sid     = "AppVersionsBucketRead"
@@ -149,20 +147,17 @@ data "aws_iam_policy_document" "instance_role_scoped" {
     }
   }
 
-  dynamic "statement" {
-    for_each = length(local.instance_role_log_group_arns) > 0 ? [1] : []
-    content {
-      sid    = "CloudWatchAgentLogs"
-      effect = "Allow"
-      actions = [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:PutRetentionPolicy",
-        "logs:DescribeLogStreams",
-      ]
-      resources = local.instance_role_log_group_arns
-    }
+  statement {
+    sid    = "CloudWatchAgentLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:PutRetentionPolicy",
+      "logs:DescribeLogStreams",
+    ]
+    resources = [local.instance_role_log_group_arn]
   }
 
   # ec2:DescribeTags / ec2:DescribeVolumes do not support resource-level permissions.

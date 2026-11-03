@@ -41,30 +41,25 @@ variable "app_lifecycle" {
 #     - "my-app-assets"
 #   s3_write_buckets: []              # (Optional) Extra bucket names the application may read, write and delete objects in. Default: [].
 #     - "my-app-uploads"
-#   log_group_prefixes:               # (Optional) Log group name prefixes the CloudWatch agent may create and write to. Default: ["/aws/elasticbeanstalk/"].
-#     - "/aws/elasticbeanstalk/"
 # Always granted (scoped inline policy eb-instance-scoped): read on the application versions bucket,
-# CloudWatch agent logs on log_group_prefixes, and ec2:DescribeTags/DescribeVolumes.
+# CloudWatch agent logs on /aws/elasticbeanstalk/*, and ec2:DescribeTags/DescribeVolumes.
+# Any other access must be granted through role_policies.
 variable "instance_role" {
-  description = "(Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Default: legacy_full_access = true, ecs_platform = true, no extra buckets, log_group_prefixes = [\"/aws/elasticbeanstalk/\"]."
+  description = "(Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Only extra S3 buckets are configurable; grant any other access through role_policies. Default: legacy_full_access = true, ecs_platform = true, no extra buckets."
   type = object({
     legacy_full_access = optional(bool, true)
     ecs_platform       = optional(bool, true)
     s3_read_buckets    = optional(list(string), [])
     s3_write_buckets   = optional(list(string), [])
-    log_group_prefixes = optional(list(string), ["/aws/elasticbeanstalk/"])
   })
   default = {}
-  validation {
-    condition     = alltrue([for p in var.instance_role.log_group_prefixes : startswith(p, "/")])
-    error_message = "instance_role.log_group_prefixes entries must start with '/' (e.g. /aws/elasticbeanstalk/)."
-  }
 }
 
-# role_policies:    # (Optional) Additional IAM policy ARNs attached to the EC2 instance role. Default: [].
+# role_policies:    # (Optional) Additional IAM policy ARNs attached to the EC2 instance role; the only way to grant
+#                   #   access beyond the instance_role S3 bucket lists. Default: [].
 #   - "arn:aws:iam::123456789012:policy/my-app-policy"
 variable "role_policies" {
-  description = "(Optional) List of additional IAM policy ARNs to attach to the Elastic Beanstalk EC2 instance role. Default: []."
+  description = "(Optional) List of additional IAM policy ARNs to attach to the Elastic Beanstalk EC2 instance role. Use this for any access beyond the instance_role S3 bucket lists. Default: []."
   type        = list(string)
   default     = []
 }
