@@ -9,8 +9,8 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.35 |
-| <a name="provider_random"></a> [random](#provider\_random) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.66.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.1 |
 
 ## Modules
 
@@ -50,35 +50,35 @@
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_app_lifecycle"></a> [app\_lifecycle](#input\_app\_lifecycle) | Lifecycle of versions for Applications | <pre>object({<br/>    delete_from_s3     = bool<br/>    max_count_versions = optional(number, null)<br/>    max_age_retention  = optional(number, null)<br/>  })</pre> | <pre>{<br/>  "delete_from_s3": false,<br/>  "max_age_retention": null,<br/>  "max_count_versions": null<br/>}</pre> | no |
-| <a name="input_applications"></a> [applications](#input\_applications) | List of Elastic Beanstalk applications | `list(string)` | n/a | yes |
-| <a name="input_artifact_archive_days"></a> [artifact\_archive\_days](#input\_artifact\_archive\_days) | (required) Transition to archive storage tier Standard-IA -> Glacier in days. | `number` | `365` | no |
-| <a name="input_artifact_retention_years"></a> [artifact\_retention\_years](#input\_artifact\_retention\_years) | (required) Versions bucket last artifact available deletion policy | `number` | `3` | no |
-| <a name="input_artifact_transition_days"></a> [artifact\_transition\_days](#input\_artifact\_transition\_days) | (required) Versions bucket transition to different tiers Day 0 -> Standard-IA -> Glacier in days. | `number` | n/a | yes |
-| <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | Default prefix for the bucket name | `string` | n/a | yes |
+| <a name="input_app_lifecycle"></a> [app\_lifecycle](#input\_app\_lifecycle) | (Optional) Application version lifecycle settings applied to every application; see the YAML comment above for attributes. Default: delete\_from\_s3 = false, no count or age limit. | <pre>object({<br/>    delete_from_s3     = bool<br/>    max_count_versions = optional(number, null)<br/>    max_age_retention  = optional(number, null)<br/>  })</pre> | <pre>{<br/>  "delete_from_s3": false,<br/>  "max_age_retention": null,<br/>  "max_count_versions": null<br/>}</pre> | no |
+| <a name="input_applications"></a> [applications](#input\_applications) | (Required) List of Elastic Beanstalk application names to create. | `list(string)` | n/a | yes |
+| <a name="input_artifact_archive_days"></a> [artifact\_archive\_days](#input\_artifact\_archive\_days) | (Optional) Days before current artifacts in the application versions bucket transition to GLACIER. Must be greater than artifact\_transition\_days. Default: 365. | `number` | `365` | no |
+| <a name="input_artifact_retention_years"></a> [artifact\_retention\_years](#input\_artifact\_retention\_years) | (Optional) Years before current artifacts in the application versions bucket expire (years * 365 days). Default: 3. | `number` | `3` | no |
+| <a name="input_artifact_transition_days"></a> [artifact\_transition\_days](#input\_artifact\_transition\_days) | (Required) Days before current artifacts in the application versions bucket transition to STANDARD\_IA. | `number` | n/a | yes |
+| <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | (Required) Prefix used in the logs and application versions bucket names. Must be 1-9 characters. | `string` | n/a | yes |
 | <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
-| <a name="input_import_default_bucket"></a> [import\_default\_bucket](#input\_import\_default\_bucket) | (Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account\_id>) into state instead of creating it. Default: false. | `bool` | `false` | no |
+| <a name="input_import_default_bucket"></a> [import\_default\_bucket](#input\_import\_default\_bucket) | (Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account\_id>) into state instead of creating it. Set to true when Elastic Beanstalk or a previous deployment already created the bucket. Default: false. | `bool` | `false` | no |
 | <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
-| <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (required) Log bucket file archiving to GLACIER time policy | `number` | n/a | yes |
-| <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (required) Log bucket expiration time policy in years. | `number` | `3` | no |
+| <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (Required) Days before load balancer log objects transition to the GLACIER storage class. | `number` | n/a | yes |
+| <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (Optional) Years before load balancer log objects expire (converted to days as years * 365). Default: 3. | `number` | `3` | no |
 | <a name="input_org"></a> [org](#input\_org) | Organization details | <pre>object({<br/>    organization_name = string<br/>    organization_unit = string<br/>    environment_type  = string<br/>    environment_name  = string<br/>  })</pre> | n/a | yes |
-| <a name="input_random_bucket_suffix"></a> [random\_bucket\_suffix](#input\_random\_bucket\_suffix) | Add a random suffix to the bucket name | `bool` | `true` | no |
-| <a name="input_role_policies"></a> [role\_policies](#input\_role\_policies) | List of IAM policies to attach to the service role | `list(string)` | `[]` | no |
+| <a name="input_random_bucket_suffix"></a> [random\_bucket\_suffix](#input\_random\_bucket\_suffix) | (Optional) Append an 8-character random suffix to the logs and application versions bucket names. Default: true. | `bool` | `true` | no |
+| <a name="input_role_policies"></a> [role\_policies](#input\_role\_policies) | (Optional) List of additional IAM policy ARNs to attach to the Elastic Beanstalk EC2 instance role. Default: []. | `list(string)` | `[]` | no |
 | <a name="input_spoke_def"></a> [spoke\_def](#input\_spoke\_def) | Spoke ID Number, must be a 3 digit number | `string` | `"001"` | no |
-| <a name="input_versions_archive_days"></a> [versions\_archive\_days](#input\_versions\_archive\_days) | (required) Transition to archive storage tier Standard-IA -> Glacier in days. | `number` | `365` | no |
-| <a name="input_versions_retention_years"></a> [versions\_retention\_years](#input\_versions\_retention\_years) | (required) Versions bucket artifact versions deletion policy | `number` | `3` | no |
+| <a name="input_versions_archive_days"></a> [versions\_archive\_days](#input\_versions\_archive\_days) | (Optional) Days before noncurrent object versions in the application versions bucket transition to GLACIER. Default: 365. | `number` | `365` | no |
+| <a name="input_versions_retention_years"></a> [versions\_retention\_years](#input\_versions\_retention\_years) | (Optional) Years before noncurrent object versions in the application versions bucket expire (years * 365 days). Default: 3. | `number` | `3` | no |
 
 ## Outputs
 
 | Name | Description |
 | ---- | ----------- |
-| <a name="output_applications"></a> [applications](#output\_applications) | n/a |
-| <a name="output_iam_instance_profile_arn"></a> [iam\_instance\_profile\_arn](#output\_iam\_instance\_profile\_arn) | n/a |
-| <a name="output_iam_instance_profile_id"></a> [iam\_instance\_profile\_id](#output\_iam\_instance\_profile\_id) | n/a |
-| <a name="output_iam_instance_profile_unique_id"></a> [iam\_instance\_profile\_unique\_id](#output\_iam\_instance\_profile\_unique\_id) | n/a |
-| <a name="output_iam_instance_role_arn"></a> [iam\_instance\_role\_arn](#output\_iam\_instance\_role\_arn) | n/a |
-| <a name="output_iam_instance_role_id"></a> [iam\_instance\_role\_id](#output\_iam\_instance\_role\_id) | n/a |
-| <a name="output_iam_service_role_arn"></a> [iam\_service\_role\_arn](#output\_iam\_service\_role\_arn) | n/a |
-| <a name="output_iam_service_role_id"></a> [iam\_service\_role\_id](#output\_iam\_service\_role\_id) | n/a |
-| <a name="output_logs_bucket_name"></a> [logs\_bucket\_name](#output\_logs\_bucket\_name) | n/a |
-| <a name="output_versions_bucket_name"></a> [versions\_bucket\_name](#output\_versions\_bucket\_name) | n/a |
+| <a name="output_applications"></a> [applications](#output\_applications) | Map of created Elastic Beanstalk applications keyed by name, each with name and arn. |
+| <a name="output_iam_instance_profile_arn"></a> [iam\_instance\_profile\_arn](#output\_iam\_instance\_profile\_arn) | ARN of the IAM instance profile for Elastic Beanstalk EC2 instances. |
+| <a name="output_iam_instance_profile_id"></a> [iam\_instance\_profile\_id](#output\_iam\_instance\_profile\_id) | Name (ID) of the IAM instance profile for Elastic Beanstalk EC2 instances. |
+| <a name="output_iam_instance_profile_unique_id"></a> [iam\_instance\_profile\_unique\_id](#output\_iam\_instance\_profile\_unique\_id) | Unique ID assigned by AWS to the IAM instance profile. |
+| <a name="output_iam_instance_role_arn"></a> [iam\_instance\_role\_arn](#output\_iam\_instance\_role\_arn) | ARN of the IAM role assumed by Elastic Beanstalk EC2 instances. |
+| <a name="output_iam_instance_role_id"></a> [iam\_instance\_role\_id](#output\_iam\_instance\_role\_id) | Name (ID) of the IAM role assumed by Elastic Beanstalk EC2 instances. |
+| <a name="output_iam_service_role_arn"></a> [iam\_service\_role\_arn](#output\_iam\_service\_role\_arn) | ARN of the Elastic Beanstalk service role. |
+| <a name="output_iam_service_role_id"></a> [iam\_service\_role\_id](#output\_iam\_service\_role\_id) | Name (ID) of the Elastic Beanstalk service role. |
+| <a name="output_logs_bucket_name"></a> [logs\_bucket\_name](#output\_logs\_bucket\_name) | Name of the load balancer access logs S3 bucket. |
+| <a name="output_versions_bucket_name"></a> [versions\_bucket\_name](#output\_versions\_bucket\_name) | Name of the application versions S3 bucket. |

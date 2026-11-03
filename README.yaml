@@ -1,6 +1,14 @@
 name: Terraform Beanstalk Applications Setup Module
 #logo: logo/logo.jpg
 
+badges:
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudopsworks/terraform-module-aws-beanstalk-applications.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications/releases/latest
+  - name: Last Updated
+    image: https://img.shields.io/github/last-commit/cloudopsworks/terraform-module-aws-beanstalk-applications.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications/commits
+
 license: "APACHE2"
 
 copyrights:
@@ -11,63 +19,206 @@ copyrights:
 github_repo: cloudopsworks/terraform-module-aws-beanstalk-applications
 
 description: |-
-  AWS Elastic Beanstalk Applications setup module that manages application buckets, logging, and versioning configurations. 
-  Provides automated setup for application version storage, logging buckets, and Elastic Beanstalk required resources.
+  AWS Elastic Beanstalk applications foundation module. It creates the Elastic Beanstalk applications, the
+  service and EC2 instance IAM roles, and the S3 buckets Elastic Beanstalk needs: application versions,
+  load balancer access logs, and the regional `elasticbeanstalk-<region>-<account_id>` bucket. Can also adopt
+  that regional bucket when it already exists.
 
 # Introduction to the project
 introduction: |-
-  This module creates and manages AWS Elastic Beanstalk application infrastructure including:
-  - Application versions S3 bucket with lifecycle policies
-  - Load balancer logging S3 bucket with retention policies
-  - Region-specific Elastic Beanstalk bucket
-  All buckets are configured with proper security settings and encryption.
+  This module lays the shared groundwork that Elastic Beanstalk environments in an account and region depend on.
+
+  | Component | Resource | Notes |
+  |-----------|----------|-------|
+  | Applications | `aws_elastic_beanstalk_application` | One per entry in `applications`, with a shared version lifecycle (`app_lifecycle`). |
+  | Service role | `eb-service-role-<system_name>` | Trusted by `elasticbeanstalk.amazonaws.com`; Enhanced Health and Managed Updates policies attached. |
+  | Instance role & profile | `eb-ec2-role-<system_name>` | EC2 read-only, SSM core, S3, CloudWatch, and Beanstalk web/worker/multicontainer policies, plus `role_policies`. |
+  | Application versions bucket | `appver-<prefix>-<system_name_short>-<suffix>` | KMS (`aws/s3`) encryption, versioning, STANDARD_IA → GLACIER → expiration lifecycle. |
+  | Load balancer logs bucket | `logs-<prefix>-<system_name_short>[-<suffix>]` | ACL `log-delivery-write`, ELB/ALB/NLB delivery policies, GLACIER archive and expiration. |
+  | Default Beanstalk bucket | `elasticbeanstalk-<region>-<account_id>` | Bucket policy for the Beanstalk service; can be imported when it already exists. |
+
+  Every bucket blocks public access, enforces TLS, and denies insecure transport.
+
+  ### Adopting an existing default Elastic Beanstalk bucket
+
+  AWS creates `elasticbeanstalk-<region>-<account_id>` the first time Elastic Beanstalk is used in an
+  account and region, whether from the console, the EB CLI, or an earlier deployment. If the bucket already
+  exists, creating it fails with `BucketAlreadyOwnedByYou`. Set `import_default_bucket: true` and the module
+  adds an `import` block that brings the bucket under `module.beanstalk_bucket` on the next apply.
+  After the import has been applied once, you can leave the flag on (it does nothing more) or set it back to `false`.
+
+  Requires Terraform/OpenTofu **>= 1.7** (`for_each` on `import` blocks).
 
 # How to use this project
 usage: |-
-  Module supports the following configurations through variables:
+  ### Scaffold a new deployment
 
-  bucket_configuration:
-    random_bucket_suffix: Boolean to append random string to bucket names
-    default_bucket_prefix: Prefix for bucket names
+  The module ships a Terragrunt boilerplate under `.boilerplate/`. Create the target directory first, then scaffold into it:
 
-  retention_policies:
-    artifact_transition_days: Days before moving to STANDARD_IA
-    artifact_archive_days: Days before moving to GLACIER
-    versions_archive_days: Days before archiving old versions
-    versions_retention_years: Years to retain versions
-    artifact_retention_years: Years to retain artifacts
-    logs_archive_days: Days before archiving logs
-    logs_retention_years: Years to retain logs
+  ```sh
+  # 1. Create and enter the target deployment directory
+  mkdir -p <environment>/<region>/<spoke>/beanstalk-applications
+  cd <environment>/<region>/<spoke>/beanstalk-applications
 
-# Example usage
-examples: |-
-  Terragrunt configuration example:
+  # 2. Scaffold the module (do NOT use --working-dir)
+  terragrunt scaffold github.com/cloudopsworks/terraform-module-aws-beanstalk-applications
+
+  # 3. Edit inputs.yaml with deployment-specific values
+  #    (all keys and comments are pre-populated from .boilerplate/inputs.yaml)
+  vi inputs.yaml
+
+  # 4. Apply
+  terragrunt apply
+  ```
+
+  Scaffold writes `terragrunt.hcl`, `inputs.yaml`, and `local-tags.json` into the current directory.
+
+  ### Generated `inputs.yaml`
+
+  `is_hub`, `spoke_def`, `org`, and `extra_tags` are not listed here. They come from the Terragrunt hierarchy.
+
+  ```yaml
+  # Module configuration
+  # is_hub, spoke_def, org and extra_tags are injected by the Terragrunt hierarchy
+  # (boilerplate, spoke-inputs.yaml, env-inputs.yaml and the merged *-tags.json files).
+
+  ## Elastic Beanstalk applications
+  applications:                  # (Required) Elastic Beanstalk application names to create, one per entry.
+    - "my-app"
+  #app_lifecycle:                # (Optional) Application version lifecycle applied to every application.
+  #  delete_from_s3: false       # (Required) Delete the source bundle from S3 when a version is removed. Default: false.
+  #  max_count_versions: 200     # (Optional) Keep at most this many versions. Default: null (no count limit).
+  #  max_age_retention: 180      # (Optional) Delete versions older than this many days. Default: null (no age limit).
+  #                              # Set only one of max_count_versions / max_age_retention.
+  #role_policies: []             # (Optional) Extra IAM policy ARNs attached to the EC2 instance role. Default: [].
+  #  - "arn:aws:iam::123456789012:policy/my-app-policy"
+
+  ## Bucket naming
+  default_bucket_prefix: "app"   # (Required) Prefix for the logs and application versions bucket names, 1-9 characters.
+  #random_bucket_suffix: true    # (Optional) Append an 8-char random suffix to bucket names. Default: true.
+  #                              #   logs bucket:     logs-<prefix>-<system_name_short>[-<suffix>]
+  #                              #   versions bucket: appver-<prefix>-<system_name_short>-<suffix>
+
+  ## Load balancer logs bucket lifecycle
+  logs_archive_days: 90          # (Required) Days before log objects transition to GLACIER.
+  #logs_retention_years: 3       # (Optional) Years before log objects expire (years * 365 days). Default: 3.
+
+  ## Application versions bucket lifecycle
+  artifact_transition_days: 30   # (Required) Days before current artifacts transition to STANDARD_IA (minimum 30).
+  #artifact_archive_days: 365    # (Optional) Days before current artifacts transition to GLACIER. Default: 365.
+  #artifact_retention_years: 3   # (Optional) Years before current artifacts expire (years * 365 days). Default: 3.
+  #versions_archive_days: 365    # (Optional) Days before noncurrent versions transition to GLACIER. Default: 365.
+  #versions_retention_years: 3   # (Optional) Years before noncurrent versions expire (years * 365 days). Default: 3.
+
+  ## Default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account_id>)
+  #import_default_bucket: false  # (Optional) Import the existing default bucket into state instead of creating it.
+  #                              # Set to true when Elastic Beanstalk or a prior deployment already created it. Default: false.
+  ```
+
+  ### Generated `terragrunt.hcl`
+
+  Scaffold renders the boilerplate `terragrunt.hcl` and loads `inputs.yaml` as `local.local_vars`.
+  Required variables are read directly. Optional variables fall back to the module default through `try()`.
+
   ```hcl
-  include {
-    path = find_in_parent_folders()
+  locals {
+    local_vars  = yamldecode(file("./inputs.yaml"))
+    spoke_vars  = yamldecode(file(find_in_parent_folders("spoke-inputs.yaml")))
+    region_vars = yamldecode(file(find_in_parent_folders("region-inputs.yaml")))
+    env_vars    = yamldecode(file(find_in_parent_folders("env-inputs.yaml")))
+    global_vars = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
+
+    local_tags  = jsondecode(file("./local-tags.json"))
+    spoke_tags  = jsondecode(file(find_in_parent_folders("spoke-tags.json")))
+    region_tags = jsondecode(file(find_in_parent_folders("region-tags.json")))
+    env_tags    = jsondecode(file(find_in_parent_folders("env-tags.json")))
+    global_tags = jsondecode(file(find_in_parent_folders("global-tags.json")))
+
+    tags = merge(
+      local.global_tags,
+      local.env_tags,
+      local.region_tags,
+      local.spoke_tags,
+      local.local_tags
+    )
+  }
+
+  include "root" {
+    path = find_in_parent_folders("root.hcl")
   }
 
   terraform {
-    source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git?ref=v1.0.0"
+    source = "git::https://github.com/cloudopsworks/terraform-module-aws-beanstalk-applications.git//?ref=v1.3.1"
   }
 
   inputs = {
-    random_bucket_suffix = true
-    default_bucket_prefix = "myapp"
-    artifact_retention_years = 2
-    logs_retention_years = 1
-    versions_retention_years = 2
+    is_hub                   = false
+    org                      = local.env_vars.org
+    spoke_def                = local.spoke_vars.spoke
+    applications             = local.local_vars.applications
+    artifact_transition_days = local.local_vars.artifact_transition_days
+    default_bucket_prefix    = local.local_vars.default_bucket_prefix
+    logs_archive_days        = local.local_vars.logs_archive_days
+    app_lifecycle            = try(local.local_vars.app_lifecycle, { delete_from_s3 = false, max_count_versions = null, max_age_retention = null })
+    artifact_archive_days    = try(local.local_vars.artifact_archive_days, 365)
+    artifact_retention_years = try(local.local_vars.artifact_retention_years, 3)
+    import_default_bucket    = try(local.local_vars.import_default_bucket, false)
+    logs_retention_years     = try(local.local_vars.logs_retention_years, 3)
+    random_bucket_suffix     = try(local.local_vars.random_bucket_suffix, true)
+    role_policies            = try(local.local_vars.role_policies, [])
+    versions_archive_days    = try(local.local_vars.versions_archive_days, 365)
+    versions_retention_years = try(local.local_vars.versions_retention_years, 3)
+    extra_tags               = local.tags
   }
   ```
 
+# Example usage
+examples: |-
+  ### Minimal deployment
+
+  ```yaml
+  # inputs.yaml
+  applications:
+    - "orders-api"
+  default_bucket_prefix: "shop"
+  logs_archive_days: 90
+  artifact_transition_days: 30
+  ```
+
+  ### Version lifecycle, extra instance policies, and adopting the existing default bucket
+
+  Use this when the account already has `elasticbeanstalk-<region>-<account_id>`, for example because
+  someone used the Beanstalk console or EB CLI there before.
+
+  ```yaml
+  # inputs.yaml
+  applications:
+    - "orders-api"
+    - "orders-worker"
+  app_lifecycle:
+    delete_from_s3: true
+    max_count_versions: 100
+  role_policies:
+    - "arn:aws:iam::123456789012:policy/orders-secrets-read"
+  default_bucket_prefix: "shop"
+  logs_archive_days: 30
+  logs_retention_years: 1
+  artifact_transition_days: 30
+  artifact_archive_days: 180
+  artifact_retention_years: 2
+  versions_retention_years: 1
+  import_default_bucket: true
+  ```
+
+  On the first `terragrunt plan`, look for `module.beanstalk_bucket.aws_s3_bucket.this[0] will be imported`.
+
 # How to get started quickly
 quickstart: |-
-  1. Create a new Terragrunt configuration file
-  2. Set the module source to this repository
-  3. Configure required variables:
-     - default_bucket_prefix
-     - retention policies as needed
-  4. Run terragrunt init && terragrunt apply
+  1. Create and enter the deployment directory: `mkdir -p <env>/<region>/<spoke>/beanstalk-applications && cd $_`
+  2. Scaffold: `terragrunt scaffold github.com/cloudopsworks/terraform-module-aws-beanstalk-applications`
+  3. In `inputs.yaml`, set the required keys: `applications`, `default_bucket_prefix`, `logs_archive_days`, `artifact_transition_days`.
+  4. If `elasticbeanstalk-<region>-<account_id>` already exists in the account, set `import_default_bucket: true`.
+  5. Run `terragrunt plan` and then `terragrunt apply`.
 
 include:
   - "docs/targets.md"
