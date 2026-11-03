@@ -34,20 +34,21 @@ variable "app_lifecycle" {
 }
 
 # instance_role:
-#   legacy_full_access: true          # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess and AmazonEC2ReadOnlyAccess
-#                                     #   (account-wide access, not needed by the Beanstalk platform). Set false for least privilege. Default: true.
+#   legacy_full_access: false          # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess and AmazonEC2ReadOnlyAccess
+#                                     #   (account-wide access, not needed by the Beanstalk platform). Set false for least privilege. Default: false.
 #   ecs_platform: true                # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker; needed only on ECS-based Docker platform branches. Default: true.
 #   s3_read_buckets: []               # (Optional) Extra bucket names the application may read (Get/List). Default: [].
 #     - "my-app-assets"
 #   s3_write_buckets: []              # (Optional) Extra bucket names the application may read, write and delete objects in. Default: [].
 #     - "my-app-uploads"
-# Always granted (scoped inline policy eb-instance-scoped): read on the application versions bucket,
-# CloudWatch agent logs on /aws/elasticbeanstalk/*, and ec2:DescribeTags/DescribeVolumes.
+# Always granted (scoped inline policy eb-instance-scoped): read on the three buckets this module creates
+# (application versions, load balancer logs, default Elastic Beanstalk bucket), PutObject on the default
+# Elastic Beanstalk bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, and ec2:DescribeTags/DescribeVolumes.
 # Any other access must be granted through role_policies.
 variable "instance_role" {
-  description = "(Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Only extra S3 buckets are configurable; grant any other access through role_policies. Default: legacy_full_access = true, ecs_platform = true, no extra buckets."
+  description = "(Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Only extra S3 buckets are configurable; grant any other access through role_policies. Default: legacy_full_access = false, ecs_platform = true, no extra buckets."
   type = object({
-    legacy_full_access = optional(bool, true)
+    legacy_full_access = optional(bool, false)
     ecs_platform       = optional(bool, true)
     s3_read_buckets    = optional(list(string), [])
     s3_write_buckets   = optional(list(string), [])

@@ -66,7 +66,7 @@ Every bucket blocks public access, enforces TLS, and denies insecure transport.
 |--------|----------|--------|
 | `AWSElasticBeanstalkWebTier` / `WorkerTier` | always | Beanstalk's own needs: `elasticbeanstalk-*` buckets, log streaming to `/aws/elasticbeanstalk*`, X-Ray, `cloudwatch:PutMetricData`, worker SQS/DynamoDB, health reporting |
 | `AmazonSSMManagedInstanceCore` | always | Session Manager and SSM agent |
-| `eb-instance-scoped` (inline) | always | Read on the application versions bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `/aws/elasticbeanstalk/*` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
+| `eb-instance-scoped` (inline) | always | Read on all three module buckets (application versions, load balancer logs, default Beanstalk bucket); `s3:PutObject` on the default Beanstalk bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `/aws/elasticbeanstalk/*` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
 | `AWSElasticBeanstalkMulticontainerDocker` | `instance_role.ecs_platform` (default `true`) | ECS access, needed only on ECS-based Docker platform branches |
 | `AmazonS3FullAccess`, `CloudWatchFullAccess`, `AmazonEC2ReadOnlyAccess` | `instance_role.legacy_full_access` (default `true`) | Account-wide S3 read/write/delete, full CloudWatch/Logs/alarm/dashboard control, and EC2/ELB/ASG inventory. **Not needed by Beanstalk.** |
 
@@ -134,7 +134,8 @@ applications:                  # (Required) Elastic Beanstalk application names 
 #  max_age_retention: 180      # (Optional) Delete versions older than this many days. Default: null (no age limit).
 #                              # Set only one of max_count_versions / max_age_retention.
 #instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
-#                              # app versions bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
+#                              # module's versions, logs and default Beanstalk buckets, PutObject on the default Beanstalk
+#                              # bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
 #  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
 #                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
 #  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.
@@ -372,7 +373,7 @@ Available targets:
 | <a name="input_default_bucket_prefix"></a> [default\_bucket\_prefix](#input\_default\_bucket\_prefix) | (Required) Prefix used in the logs and application versions bucket names. Must be 1-9 characters. | `string` | n/a | yes |
 | <a name="input_extra_tags"></a> [extra\_tags](#input\_extra\_tags) | Extra tags to add to the resources | `map(string)` | `{}` | no |
 | <a name="input_import_default_bucket"></a> [import\_default\_bucket](#input\_import\_default\_bucket) | (Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account\_id>) into state instead of creating it. Set to true when Elastic Beanstalk or a previous deployment already created the bucket. Default: false. | `bool` | `false` | no |
-| <a name="input_instance_role"></a> [instance\_role](#input\_instance\_role) | (Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Only extra S3 buckets are configurable; grant any other access through role\_policies. Default: legacy\_full\_access = true, ecs\_platform = true, no extra buckets. | <pre>object({<br/>    legacy_full_access = optional(bool, true)<br/>    ecs_platform       = optional(bool, true)<br/>    s3_read_buckets    = optional(list(string), [])<br/>    s3_write_buckets   = optional(list(string), [])<br/>  })</pre> | `{}` | no |
+| <a name="input_instance_role"></a> [instance\_role](#input\_instance\_role) | (Optional) Permission settings for the Elastic Beanstalk EC2 instance role; see the YAML comment above for attributes. Only extra S3 buckets are configurable; grant any other access through role\_policies. Default: legacy\_full\_access = false, ecs\_platform = true, no extra buckets. | <pre>object({<br/>    legacy_full_access = optional(bool, false)<br/>    ecs_platform       = optional(bool, true)<br/>    s3_read_buckets    = optional(list(string), [])<br/>    s3_write_buckets   = optional(list(string), [])<br/>  })</pre> | `{}` | no |
 | <a name="input_is_hub"></a> [is\_hub](#input\_is\_hub) | Is this a hub or spoke configuration? | `bool` | `false` | no |
 | <a name="input_logs_archive_days"></a> [logs\_archive\_days](#input\_logs\_archive\_days) | (Required) Days before load balancer log objects transition to the GLACIER storage class. | `number` | n/a | yes |
 | <a name="input_logs_retention_years"></a> [logs\_retention\_years](#input\_logs\_retention\_years) | (Optional) Years before load balancer log objects expire (converted to days as years * 365). Default: 3. | `number` | `3` | no |

@@ -11,7 +11,8 @@ applications:                  # (Required) Elastic Beanstalk application names 
 #  max_age_retention: 180      # (Optional) Delete versions older than this many days. Default: null (no age limit).
 #                              # Set only one of max_count_versions / max_age_retention.
 #instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
-#                              # app versions bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
+#                              # module's versions, logs and default Beanstalk buckets, PutObject on the default Beanstalk
+#                              # bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
 #  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
 #                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
 #  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.

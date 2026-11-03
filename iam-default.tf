@@ -10,6 +10,12 @@
 locals {
   iam_role_name = format("eb-ec2-role-%s", local.system_name)
 
+  module_bucket_arns = [
+    module.versions_bucket.s3_bucket_arn,
+    module.logs_bucket.s3_bucket_arn,
+    module.beanstalk_bucket.s3_bucket_arn,
+  ]
+
   instance_role_log_group_arn = format("arn:aws:logs:%s:%s:log-group:/aws/elasticbeanstalk/*", data.aws_region.current.region, data.aws_caller_identity.current.account_id)
 }
 
@@ -104,13 +110,28 @@ moved {
 # Only extra S3 buckets are configurable here; any other access must be granted through role_policies.
 data "aws_iam_policy_document" "instance_role_scoped" {
   statement {
-    sid     = "AppVersionsBucketRead"
-    effect  = "Allow"
-    actions = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket", "s3:GetBucketLocation"]
-    resources = [
-      module.versions_bucket.s3_bucket_arn,
-      "${module.versions_bucket.s3_bucket_arn}/*",
+    sid    = "ModuleBucketsRead"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:GetBucketLocation",
     ]
+    resources = flatten([
+      for arn in local.module_bucket_arns : [arn, "${arn}/*"]
+    ])
+  }
+
+  # Beanstalk publishes rotated and bundled instance logs under resources/environments/logs/ in the
+  # default bucket. The versions and load balancer logs buckets stay read-only so instances cannot
+  # overwrite deployment artifacts or tamper with access logs.
+  statement {
+    sid       = "BeanstalkBucketWrite"
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${module.beanstalk_bucket.s3_bucket_arn}/*"]
   }
 
   dynamic "statement" {

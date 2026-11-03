@@ -45,7 +45,7 @@ introduction: |-
   |--------|----------|--------|
   | `AWSElasticBeanstalkWebTier` / `WorkerTier` | always | Beanstalk's own needs: `elasticbeanstalk-*` buckets, log streaming to `/aws/elasticbeanstalk*`, X-Ray, `cloudwatch:PutMetricData`, worker SQS/DynamoDB, health reporting |
   | `AmazonSSMManagedInstanceCore` | always | Session Manager and SSM agent |
-  | `eb-instance-scoped` (inline) | always | Read on the application versions bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `/aws/elasticbeanstalk/*` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
+  | `eb-instance-scoped` (inline) | always | Read on all three module buckets (application versions, load balancer logs, default Beanstalk bucket); `s3:PutObject` on the default Beanstalk bucket; read on `instance_role.s3_read_buckets`; read/write/delete on `instance_role.s3_write_buckets`; CloudWatch agent `logs:*LogGroup/LogStream/PutLogEvents/PutRetentionPolicy` on `/aws/elasticbeanstalk/*` in this region and account; `ec2:DescribeTags`/`DescribeVolumes` |
   | `AWSElasticBeanstalkMulticontainerDocker` | `instance_role.ecs_platform` (default `true`) | ECS access, needed only on ECS-based Docker platform branches |
   | `AmazonS3FullAccess`, `CloudWatchFullAccess`, `AmazonEC2ReadOnlyAccess` | `instance_role.legacy_full_access` (default `true`) | Account-wide S3 read/write/delete, full CloudWatch/Logs/alarm/dashboard control, and EC2/ELB/ASG inventory. **Not needed by Beanstalk.** |
 
@@ -108,7 +108,8 @@ usage: |-
   #  max_age_retention: 180      # (Optional) Delete versions older than this many days. Default: null (no age limit).
   #                              # Set only one of max_count_versions / max_age_retention.
   #instance_role:                # (Optional) EC2 instance role permissions. The scoped policy always grants read on the
-  #                              # app versions bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
+  #                              # module's versions, logs and default Beanstalk buckets, PutObject on the default Beanstalk
+  #                              # bucket, CloudWatch agent logs on /aws/elasticbeanstalk/*, ec2:DescribeTags/Volumes.
   #  legacy_full_access: true    # (Optional) Also attach AmazonS3FullAccess, CloudWatchFullAccess, AmazonEC2ReadOnlyAccess
   #                              #   (account-wide; not needed by Beanstalk). Set false for least privilege. Default: true.
   #  ecs_platform: true          # (Optional) Attach AWSElasticBeanstalkMulticontainerDocker (ECS-based Docker platforms only). Default: true.
