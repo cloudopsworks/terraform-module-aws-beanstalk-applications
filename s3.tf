@@ -165,6 +165,12 @@ data "aws_iam_policy_document" "beanstalk_bucket" {
   }
 }
 
+import {
+  for_each = toset(var.import_default_bucket ? [local.beanstalk_bucket] : [])
+  id       = local.beanstalk_bucket
+  to       = module.beanstalk_bucket.aws_s3_bucket.this[0]
+}
+
 module "beanstalk_bucket" {
   source                                = "terraform-aws-modules/s3-bucket/aws"
   version                               = "~> 5.0"

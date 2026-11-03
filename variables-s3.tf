@@ -62,3 +62,9 @@ variable "versions_archive_days" {
   description = "(required) Transition to archive storage tier Standard-IA -> Glacier in days."
   default     = 365
 }
+
+variable "import_default_bucket" {
+  type        = bool
+  description = "(Optional) Import the pre-existing default Elastic Beanstalk bucket (elasticbeanstalk-<region>-<account_id>) into state instead of creating it. Default: false."
+  default     = false
+}
