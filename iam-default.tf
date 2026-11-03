@@ -1,5 +1,5 @@
 ##
-# (c) 2021-2025
+# (c) 2021-2026
 #     Cloud Ops Works LLC - https://cloudops.works/
 #     Find us on:
 #       GitHub: https://github.com/cloudopsworks
@@ -9,9 +9,16 @@
 
 locals {
   iam_role_name = format("eb-ec2-role-%s", local.system_name)
+
+  module_bucket_arns = [
+    module.versions_bucket.s3_bucket_arn,
+    module.logs_bucket.s3_bucket_arn,
+    module.beanstalk_bucket.s3_bucket_arn,
+  ]
+
+  instance_role_log_group_arn = format("arn:aws:logs:%s:%s:log-group:/aws/elasticbeanstalk/*", data.aws_region.current.region, data.aws_caller_identity.current.account_id)
 }
 
-# Policy for ElasticBeanstalk assume role
 data "aws_iam_policy_document" "instance_role" {
   version = "2012-10-17"
   statement {
@@ -23,7 +30,6 @@ data "aws_iam_policy_document" "instance_role" {
   }
 }
 
-# IAM Role for Elastic Beanstalk Instances
 resource "aws_iam_role" "instance_role" {
   name               = local.iam_role_name
   assume_role_policy = data.aws_iam_policy_document.instance_role.json
@@ -36,24 +42,10 @@ resource "aws_iam_instance_profile" "instance_role" {
   tags = local.all_tags
 }
 
-resource "aws_iam_role_policy_attachment" "instance_role_attach_ro" {
-  role       = aws_iam_role.instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
-}
-
+## Baseline managed policies required by the Elastic Beanstalk platform
 resource "aws_iam_role_policy_attachment" "instance_role_attach_ssm" {
   role       = aws_iam_role.instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_role_policy_attachment" "instance_role_attach_s3full" {
-  role       = aws_iam_role.instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "instance_role_attach_docker" {
-  role       = aws_iam_role.instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
 }
 
 resource "aws_iam_role_policy_attachment" "instance_role_attach_web" {
@@ -66,11 +58,145 @@ resource "aws_iam_role_policy_attachment" "instance_role_attach_worker" {
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
 }
 
+## ECS-based Docker platform branches only
+resource "aws_iam_role_policy_attachment" "instance_role_attach_docker" {
+  count      = var.instance_role.ecs_platform ? 1 : 0
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
+}
+
+## Legacy broad managed policies (instance_role.legacy_full_access)
+# Not needed by the Beanstalk platform: AWSElasticBeanstalkWebTier/WorkerTier and the scoped
+# inline policy below cover it. Kept only for apps that still rely on account-wide access.
+resource "aws_iam_role_policy_attachment" "instance_role_attach_ro" {
+  count      = var.instance_role.legacy_full_access ? 1 : 0
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "instance_role_attach_s3full" {
+  count      = var.instance_role.legacy_full_access ? 1 : 0
+  role       = aws_iam_role.instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
 resource "aws_iam_role_policy_attachment" "instance_role_attach_cw_full" {
+  count      = var.instance_role.legacy_full_access ? 1 : 0
   role       = aws_iam_role.instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
 
+moved {
+  from = aws_iam_role_policy_attachment.instance_role_attach_docker
+  to   = aws_iam_role_policy_attachment.instance_role_attach_docker[0]
+}
+
+moved {
+  from = aws_iam_role_policy_attachment.instance_role_attach_ro
+  to   = aws_iam_role_policy_attachment.instance_role_attach_ro[0]
+}
+
+moved {
+  from = aws_iam_role_policy_attachment.instance_role_attach_s3full
+  to   = aws_iam_role_policy_attachment.instance_role_attach_s3full[0]
+}
+
+moved {
+  from = aws_iam_role_policy_attachment.instance_role_attach_cw_full
+  to   = aws_iam_role_policy_attachment.instance_role_attach_cw_full[0]
+}
+
+## Scoped least-privilege permissions
+# Only extra S3 buckets are configurable here; any other access must be granted through role_policies.
+data "aws_iam_policy_document" "instance_role_scoped" {
+  statement {
+    sid    = "ModuleBucketsRead"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:GetBucketLocation",
+    ]
+    resources = flatten([
+      for arn in local.module_bucket_arns : [arn, "${arn}/*"]
+    ])
+  }
+
+  # Beanstalk publishes rotated and bundled instance logs under resources/environments/logs/ in the
+  # default bucket. The versions and load balancer logs buckets stay read-only so instances cannot
+  # overwrite deployment artifacts or tamper with access logs.
+  statement {
+    sid       = "BeanstalkBucketWrite"
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${module.beanstalk_bucket.s3_bucket_arn}/*"]
+  }
+
+  dynamic "statement" {
+    for_each = length(var.instance_role.s3_read_buckets) > 0 ? [1] : []
+    content {
+      sid     = "AppBucketsRead"
+      effect  = "Allow"
+      actions = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket", "s3:GetBucketLocation"]
+      resources = flatten([
+        for b in var.instance_role.s3_read_buckets : ["arn:aws:s3:::${b}", "arn:aws:s3:::${b}/*"]
+      ])
+    }
+  }
+
+  dynamic "statement" {
+    for_each = length(var.instance_role.s3_write_buckets) > 0 ? [1] : []
+    content {
+      sid    = "AppBucketsReadWrite"
+      effect = "Allow"
+      actions = [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetBucketLocation",
+      ]
+      resources = flatten([
+        for b in var.instance_role.s3_write_buckets : ["arn:aws:s3:::${b}", "arn:aws:s3:::${b}/*"]
+      ])
+    }
+  }
+
+  statement {
+    sid    = "CloudWatchAgentLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:PutRetentionPolicy",
+      "logs:DescribeLogStreams",
+    ]
+    resources = [local.instance_role_log_group_arn]
+  }
+
+  # ec2:DescribeTags / ec2:DescribeVolumes do not support resource-level permissions.
+  statement {
+    sid       = "CloudWatchAgentDescribe"
+    effect    = "Allow"
+    actions   = ["ec2:DescribeTags", "ec2:DescribeVolumes"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "instance_role_scoped" {
+  name   = "eb-instance-scoped"
+  role   = aws_iam_role.instance_role.id
+  policy = data.aws_iam_policy_document.instance_role_scoped.json
+}
+
+## Extra customer-managed policies
 resource "aws_iam_role_policy_attachment" "instance_role_attach_as_svc" {
   for_each   = toset(var.role_policies)
   role       = aws_iam_role.instance_role.name

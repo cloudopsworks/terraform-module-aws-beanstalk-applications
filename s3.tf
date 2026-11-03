@@ -5,7 +5,7 @@
 #
 locals {
   load_balancer_log_bucket    = var.random_bucket_suffix ? "logs-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "logs-${var.default_bucket_prefix}-${local.system_name_short}"
-  application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}"
+  application_versions_bucket = var.random_bucket_suffix ? "appver-${var.default_bucket_prefix}-${local.system_name_short}-${random_string.random[0].result}" : "appver-${var.default_bucket_prefix}-${local.system_name_short}"
   beanstalk_bucket            = format("elasticbeanstalk-%s-%s", replace(data.aws_region.current.region, "_", "-"), data.aws_caller_identity.current.account_id)
 }
 
@@ -163,6 +163,12 @@ data "aws_iam_policy_document" "beanstalk_bucket" {
       ]
     }
   }
+}
+
+import {
+  for_each = toset(var.import_default_bucket ? [local.beanstalk_bucket] : [])
+  id       = local.beanstalk_bucket
+  to       = module.beanstalk_bucket.aws_s3_bucket.this[0]
 }
 
 module "beanstalk_bucket" {
